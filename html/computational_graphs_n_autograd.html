@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PyTorch Autograd & Computational Graphs</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- KaTeX for beautiful math equations -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+
+    <style>
+        /* Smooth transitions for SVG elements */
+        .svg-element {
+            transition: all 0.5s ease-in-out;
+        }
+
+        .hidden-node {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .visible-node {
+            opacity: 1;
+        }
+
+        /* Dashed animation for backward pass arrows */
+        .dash-anim {
+            stroke-dasharray: 8;
+            animation: dash 1s linear infinite reverse;
+        }
+
+        @keyframes dash {
+            to {
+                stroke-dashoffset: 16;
+            }
+        }
+    </style>
+</head>
+<!-- Changed items-center to items-start and added py-10 for vertical scrolling -->
+
+<body class="bg-gray-50 min-h-screen font-sans flex items-start justify-center py-10 px-4">
+
+    <div class="max-w-4xl w-full bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
+
+        <!-- Header -->
+        <div class="bg-blue-600 p-6 text-white text-center">
+            <h1 class="text-3xl font-bold mb-2">Computational Graphs & Autograd</h1>
+            <p class="text-blue-100">Understanding how PyTorch calculates gradients step-by-step</p>
+        </div>
+
+        <!-- Main Content Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-0">
+
+            <!-- Left Side: SVG Visualization -->
+            <div
+                class="p-6 bg-gray-50 border-b md:border-b-0 md:border-r border-gray-200 flex items-center justify-center">
+                <svg viewBox="0 0 600 400" class="w-full h-auto max-w-lg drop-shadow-md">
+                    <!-- Definitions for arrowheads -->
+                    <defs>
+                        <marker id="arrow-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6"
+                            orient="auto-start-reverse">
+                            <path d="M 0 0 L 10 5 L 0 10 z" fill="#3B82F6" />
+                        </marker>
+                        <marker id="arrow-red" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6"
+                            orient="auto-start-reverse">
+                            <path d="M 10 0 L 0 5 L 10 10 z" fill="#EF4444" />
+                        </marker>
+                    </defs>
+
+                    <!-- Forward Pass Edges (Blue) -->
+                    <g id="forward-edges" class="svg-element hidden-node">
+                        <!-- x to q -->
+                        <line x1="130" y1="100" x2="270" y2="150" stroke="#3B82F6" stroke-width="3"
+                            marker-end="url(#arrow-blue)" />
+                        <!-- y to q -->
+                        <line x1="130" y1="200" x2="270" y2="150" stroke="#3B82F6" stroke-width="3"
+                            marker-end="url(#arrow-blue)" />
+                        <!-- z to f -->
+                        <line x1="130" y1="300" x2="470" y2="225" stroke="#3B82F6" stroke-width="3"
+                            marker-end="url(#arrow-blue)" />
+                        <!-- q to f -->
+                        <line x1="330" y1="150" x2="470" y2="225" stroke="#3B82F6" stroke-width="3"
+                            marker-end="url(#arrow-blue)" />
+                    </g>
+
+                    <!-- Backward Pass Edges (Red Dashed) -->
+                    <g id="backward-edges-1" class="svg-element hidden-node">
+                        <!-- f to q (gradient flow) -->
+                        <path d="M 470 205 Q 400 120 330 130" fill="none" stroke="#EF4444" stroke-width="3"
+                            class="dash-anim" marker-end="url(#arrow-red)" />
+                        <!-- f to z (gradient flow) -->
+                        <path d="M 470 245 Q 400 320 130 320" fill="none" stroke="#EF4444" stroke-width="3"
+                            class="dash-anim" marker-end="url(#arrow-red)" />
+                    </g>
+                    <g id="backward-edges-2" class="svg-element hidden-node">
+                        <!-- q to x (gradient flow) -->
+                        <path d="M 270 130 Q 200 80 130 80" fill="none" stroke="#EF4444" stroke-width="3"
+                            class="dash-anim" marker-end="url(#arrow-red)" />
+                        <!-- q to y (gradient flow) -->
+                        <path d="M 270 170 Q 200 220 130 220" fill="none" stroke="#EF4444" stroke-width="3"
+                            class="dash-anim" marker-end="url(#arrow-red)" />
+                    </g>
+
+                    <!-- Nodes: Inputs (x, y, z) -->
+                    <g id="node-inputs" class="svg-element hidden-node">
+                        <!-- x -->
+                        <circle cx="100" cy="100" r="30" fill="white" stroke="#1F2937" stroke-width="3" />
+                        <text x="100" y="105" text-anchor="middle" font-size="18" font-weight="bold"
+                            fill="#1F2937">x=2</text>
+                        <!-- y -->
+                        <circle cx="100" cy="200" r="30" fill="white" stroke="#1F2937" stroke-width="3" />
+                        <text x="100" y="205" text-anchor="middle" font-size="18" font-weight="bold"
+                            fill="#1F2937">y=3</text>
+                        <!-- z -->
+                        <circle cx="100" cy="300" r="30" fill="white" stroke="#1F2937" stroke-width="3" />
+                        <text x="100" y="305" text-anchor="middle" font-size="18" font-weight="bold"
+                            fill="#1F2937">z=4</text>
+                    </g>
+
+                    <!-- Node: Intermediate (q) -->
+                    <g id="node-q" class="svg-element hidden-node">
+                        <circle cx="300" cy="150" r="30" fill="white" stroke="#3B82F6" stroke-width="3" />
+                        <text x="300" y="145" text-anchor="middle" font-size="18" font-weight="bold"
+                            fill="#3B82F6">q=6</text>
+                        <text x="300" y="165" text-anchor="middle" font-size="12" fill="#6B7280">(x * y)</text>
+                    </g>
+
+                    <!-- Node: Output (f) -->
+                    <g id="node-f" class="svg-element hidden-node">
+                        <circle cx="500" cy="225" r="30" fill="white" stroke="#3B82F6" stroke-width="3" />
+                        <text x="500" y="220" text-anchor="middle" font-size="18" font-weight="bold"
+                            fill="#3B82F6">f=10</text>
+                        <text x="500" y="240" text-anchor="middle" font-size="12" fill="#6B7280">(q + z)</text>
+                    </g>
+
+                    <!-- Gradients (Backward Pass Values) -->
+                    <!-- Output Gradient -->
+                    <g id="grad-f" class="svg-element hidden-node">
+                        <rect x="470" y="150" width="60" height="25" rx="4" fill="#FEE2E2" stroke="#EF4444" />
+                        <text x="500" y="167" text-anchor="middle" font-size="14" font-weight="bold" fill="#EF4444">∇f =
+                            1</text>
+                    </g>
+                    <!-- Intermediate Gradients -->
+                    <g id="grad-q-z" class="svg-element hidden-node">
+                        <rect x="270" y="75" width="60" height="25" rx="4" fill="#FEE2E2" stroke="#EF4444" />
+                        <text x="300" y="92" text-anchor="middle" font-size="14" font-weight="bold" fill="#EF4444">∇q =
+                            1</text>
+
+                        <rect x="70" y="345" width="60" height="25" rx="4" fill="#FEE2E2" stroke="#EF4444" />
+                        <text x="100" y="362" text-anchor="middle" font-size="14" font-weight="bold" fill="#EF4444">∇z =
+                            1</text>
+                    </g>
+                    <!-- Input Gradients -->
+                    <g id="grad-x-y" class="svg-element hidden-node">
+                        <rect x="70" y="35" width="60" height="25" rx="4" fill="#FEE2E2" stroke="#EF4444" />
+                        <text x="100" y="52" text-anchor="middle" font-size="14" font-weight="bold" fill="#EF4444">∇x =
+                            3</text>
+
+                        <rect x="70" y="245" width="60" height="25" rx="4" fill="#FEE2E2" stroke="#EF4444" />
+                        <text x="100" y="262" text-anchor="middle" font-size="14" font-weight="bold" fill="#EF4444">∇y =
+                            2</text>
+                    </g>
+                </svg>
+            </div>
+
+            <!-- Right Side: Explanations & Math -->
+            <!-- Changed from strict h-[450px] to min-h-[450px] to prevent content cutting off and allow stretching -->
+            <div class="p-8 flex flex-col justify-between min-h-[450px]">
+                <div>
+                    <div class="flex items-center space-x-2 mb-4">
+                        <span id="step-badge"
+                            class="bg-blue-100 text-blue-800 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide">Step
+                            0 / 6</span>
+                    </div>
+                    <h2 id="step-title" class="text-2xl font-bold text-gray-800 mb-3">The Problem Setup</h2>
+                    <p id="step-desc" class="text-gray-600 mb-6 leading-relaxed">
+                        Welcome! Let's explore how PyTorch calculates gradients using a computational graph.
+                    </p>
+
+                    <!-- Math Container -->
+                    <div
+                        class="bg-gray-50 rounded-lg p-4 border border-gray-200 min-h-[100px] flex flex-col justify-center overflow-x-auto">
+                        <div id="math-container" class="text-center text-lg"></div>
+                    </div>
+                </div>
+
+                <!-- Controls -->
+                <div class="flex justify-between mt-8">
+                    <button id="btn-back" onclick="changeStep(-1)"
+                        class="px-5 py-2.5 bg-white border-2 border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 hover:border-gray-400 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                        &larr; Back
+                    </button>
+                    <button id="btn-next" onclick="changeStep(1)"
+                        class="px-5 py-2.5 bg-blue-600 border-2 border-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed shadow-md">
+                        Next Step &rarr;
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/computational_graphs_n_autograd.js"></script>
+</body>
+
+</html>
