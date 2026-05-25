@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chain Rule & Gears Visualizer</title>
+
+    <!-- Tailwind CSS for Styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- KaTeX for Beautiful Math Rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+
+    <style>
+        /* Custom Animations for the Gears */
+        @keyframes spin {
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes spin-reverse {
+            100% {
+                transform: rotate(-360deg);
+            }
+        }
+
+        @keyframes spin-fast-reverse {
+            100% {
+                transform: rotate(-1080deg);
+            }
+
+            /* 3x speed backwards */
+        }
+
+        @keyframes spin-fast-fwd {
+            100% {
+                transform: rotate(1080deg);
+            }
+
+            /* 3x speed forwards */
+        }
+
+        /* FIX REMOVED:
+           The new SVG is perfectly centered within its 24x24 viewBox.
+           We can safely go back to the standard 'center' origin!
+        */
+        .gear-normal {
+            animation: spin 4s linear infinite;
+            transform-origin: center;
+        }
+
+        .gear-normal-rev {
+            animation: spin-reverse 4s linear infinite;
+            transform-origin: center;
+        }
+
+        .gear-fast-rev {
+            animation: spin-fast-reverse 4s linear infinite;
+            transform-origin: center;
+        }
+
+        .gear-fast-fwd {
+            animation: spin-fast-fwd 4s linear infinite;
+            transform-origin: center;
+        }
+
+        .slide {
+            display: none;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+        }
+
+        .slide.active {
+            display: flex;
+            opacity: 1;
+        }
+
+        /* Node styling for the graph */
+        .graph-node {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: 3px solid #1e3a8a;
+            background-color: white;
+            font-weight: bold;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            position: relative;
+            z-index: 10;
+        }
+
+        .graph-node.blue {
+            border-color: #3b82f6;
+            color: #1d4ed8;
+            background-color: #eff6ff;
+        }
+
+        .graph-node.gray {
+            border-color: #374151;
+            color: #1f2937;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50 min-h-screen flex items-center justify-center p-4 text-gray-800">
+
+    <div class="max-w-4xl w-full bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col h-[750px]">
+
+        <!-- Header -->
+        <div class="bg-blue-600 text-white p-6 text-center">
+            <h1 class="text-2xl font-bold">The Chain Rule: Finding the Mistake</h1>
+            <p class="text-blue-200 mt-1">Understanding Autograd using interconnected gears.</p>
+        </div>
+
+        <!-- Content Area (Slides) -->
+        <div class="flex-1 p-8 overflow-y-auto relative" id="slide-container">
+
+            <!-- SLIDE 0: Intro & Graph -->
+            <div class="slide active flex-col h-full" id="slide-0">
+                <h2 class="text-3xl font-bold text-center mb-6 text-gray-900">The Mission: $\frac{\partial f}{\partial
+                    x}$</h2>
+                <div class="bg-blue-50 p-6 rounded-lg mb-8 border border-blue-100 shadow-inner text-center">
+                    <p class="text-lg">We have a simple computational graph with the final equation: <strong>$f = (x
+                            \cdot y) + z$</strong></p>
+                    <p class="mt-2 text-gray-600">Autograd wants to answer one question: <em>"If I give $x$ a tiny nudge
+                            of 1, how much does the final output $f$ change?"</em></p>
+                </div>
+
+                <!-- Graph Visualization -->
+                <div class="flex justify-center items-center flex-1 relative">
+                    <!-- SVG Arrows -->
+                    <svg class="absolute inset-0 w-full h-full" style="z-index: 0;">
+                        <defs>
+                            <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6"
+                                orient="auto-start-reverse">
+                                <path d="M 0 0 L 10 5 L 0 10 z" fill="#9ca3af" />
+                            </marker>
+                        </defs>
+                        <!-- Lines connecting nodes -->
+                        <line x1="25%" y1="20%" x2="50%" y2="50%" stroke="#9ca3af" stroke-width="3"
+                            marker-end="url(#arrow)" />
+                        <line x1="25%" y1="50%" x2="50%" y2="50%" stroke="#9ca3af" stroke-width="3"
+                            marker-end="url(#arrow)" />
+                        <line x1="25%" y1="80%" x2="75%" y2="50%" stroke="#9ca3af" stroke-width="3"
+                            marker-end="url(#arrow)" />
+                        <line x1="50%" y1="50%" x2="75%" y2="50%" stroke="#9ca3af" stroke-width="3"
+                            marker-end="url(#arrow)" />
+                    </svg>
+
+                    <div class="w-full flex justify-between px-10">
+                        <div class="flex flex-col space-y-12">
+                            <div class="graph-node gray"><span class="text-xl">x=2</span></div>
+                            <div class="graph-node gray"><span class="text-xl">y=3</span></div>
+                            <div class="graph-node gray"><span class="text-xl">z=4</span></div>
+                        </div>
+                        <div class="flex flex-col justify-center">
+                            <div class="graph-node blue"><span class="text-xl">q=6</span><span
+                                    class="text-xs font-normal">(x*y)</span></div>
+                        </div>
+                        <div class="flex flex-col justify-center">
+                            <div class="graph-node blue"><span class="text-xl">f=10</span><span
+                                    class="text-xs font-normal">(q+z)</span></div>
+                        </div>
+                    </div>
+                </div>
+                <p class="text-center mt-6 text-gray-500 font-medium">Click "Next Step" to trace the math backward!</p>
+            </div>
+
+            <!-- SLIDE 1: Step 1 (df/dq) -->
+            <div class="slide flex-col h-full" id="slide-1">
+                <div class="flex justify-between items-end mb-4">
+                    <h2 class="text-3xl font-bold text-gray-900">Step 1: The Last Gear</h2>
+                    <div class="text-2xl font-bold text-blue-600 bg-blue-100 px-4 py-2 rounded-lg">$\frac{\partial
+                        f}{\partial q} = 1$</div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-8 flex-1">
+                    <div class="flex flex-col justify-center text-lg space-y-4">
+                        <p>Autograd starts at the very end and moves one step backward.</p>
+                        <div class="bg-gray-100 p-4 rounded-lg border border-gray-200">
+                            <strong>Equation:</strong> $$f = q + z$$
+                        </div>
+                        <p>It asks: <em>"If I add exactly 1 to $q$, what happens to $f$?"</em></p>
+                        <p>Let's test it: Since $q=6$ and $z=4$, currently $f=10$. If we bump $q$ up to $7$, the new
+                            math is $7+4 = 11$.</p>
+                        <p
+                            class="bg-green-100 text-green-800 p-4 rounded-lg border border-green-200 shadow-sm font-medium">
+                            The answer went up by exactly 1. Because this is simple addition, Gear Q and Gear F turn at
+                            the exact same speed (a 1:1 ratio).
+                        </p>
+                    </div>
+
+                    <div
+                        class="bg-slate-50 rounded-xl border-2 border-slate-200 flex flex-col items-center justify-center relative overflow-hidden">
+                        <!-- Gear Q and F container, sized to interlock the gears -->
+                        <div class="relative w-56 h-36 mb-8">
+                            <!-- Gear Q -->
+                            <div class="absolute left-0 top-0 text-blue-500">
+                                <svg class="w-32 h-32 gear-normal-rev" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                        d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z">
+                                    </path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                </svg>
+                                <div
+                                    class="absolute inset-0 flex items-center justify-center font-bold text-2xl text-blue-900 pointer-events-none">
+                                    Q</div>
+                            </div>
+                            <!-- Gear F -->
+                            <div class="absolute right-0 top-0 text-green-500">
+                                <svg class="w-32 h-32 gear-normal" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                        d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z">
+                                    </path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                </svg>
+                                <div
+                                    class="absolute inset-0 flex items-center justify-center font-bold text-2xl text-green-900 pointer-events-none">
+                                    F</div>
+                            </div>
+                        </div>
+                        <div class="absolute bottom-4 text-center text-sm font-bold text-slate-500 w-full">Ratio: 1 Turn
+                            to 1 Turn</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 2: Step 2 (dq/dx) -->
+            <div class="slide flex-col h-full" id="slide-2">
+                <div class="flex justify-between items-end mb-4">
+                    <h2 class="text-3xl font-bold text-gray-900">Step 2: The Multiplier Gear</h2>
+                    <div class="text-2xl font-bold text-indigo-600 bg-indigo-100 px-4 py-2 rounded-lg">$\frac{\partial
+                        q}{\partial x} = y = 3$</div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-8 flex-1">
+                    <div class="flex flex-col justify-center text-lg space-y-4">
+                        <p>Now Autograd takes another step back to look at the multiplication.</p>
+                        <div class="bg-gray-100 p-4 rounded-lg border border-gray-200">
+                            <strong>Equation:</strong> $$q = x \cdot y$$
+                        </div>
+                        <p>Autograd wants to test $x$, so it <strong>freezes $y$ at $3$</strong>.</p>
+                        <p>It asks: <em>"If I add exactly 1 to $x$, what happens to $q$?"</em></p>
+                        <p>Let's test it: Since $x=2$ and $y=3$, currently $q=6$. If we bump $x$ up to $3$, the new math
+                            is $3 \cdot 3 = 9$.</p>
+                        <p
+                            class="bg-purple-100 text-purple-800 p-4 rounded-lg border border-purple-200 shadow-sm font-medium">
+                            The answer jumped by exactly 3! Because of the multiplier $y$, one turn of Gear X causes
+                            Gear Q to spin 3 times.
+                        </p>
+                    </div>
+
+                    <div
+                        class="bg-slate-50 rounded-xl border-2 border-slate-200 flex flex-col items-center justify-center relative overflow-hidden">
+                        <!-- Gear X and Q container, aligned for interlocking visually -->
+                        <div class="relative w-44 h-32 mb-8">
+                            <!-- Gear X (Smaller, normal speed) -->
+                            <div class="absolute left-0 top-6 text-indigo-500">
+                                <svg class="w-20 h-20 gear-normal" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                        d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z">
+                                    </path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                </svg>
+                                <div
+                                    class="absolute inset-0 flex items-center justify-center font-bold text-xl text-indigo-900 pointer-events-none">
+                                    X</div>
+                            </div>
+                            <!-- Gear Q (Larger, fast speed) -->
+                            <div class="absolute right-0 top-0 text-blue-500">
+                                <svg class="w-32 h-32 gear-fast-rev" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                        d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z">
+                                    </path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                        d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                </svg>
+                                <div
+                                    class="absolute inset-0 flex items-center justify-center font-bold text-2xl text-blue-900 pointer-events-none">
+                                    Q</div>
+                            </div>
+                        </div>
+                        <div class="absolute bottom-4 text-center text-sm font-bold text-slate-500 w-full">Ratio: 1 Turn
+                            to 3 Turns</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 3: The Chain Reaction -->
+            <div class="slide flex-col h-full" id="slide-3">
+                <div class="flex justify-between items-end mb-4">
+                    <h2 class="text-3xl font-bold text-gray-900">Step 3: The Chain Reaction</h2>
+                    <div class="text-2xl font-bold text-orange-600 bg-orange-100 px-4 py-2 rounded-lg">Locking Gears
+                    </div>
+                </div>
+
+                <div class="flex-1 flex flex-col items-center justify-center space-y-6">
+                    <div class="text-center w-full max-w-2xl bg-white p-6 rounded-2xl shadow-md border border-gray-100">
+                        <p class="text-xl font-bold text-gray-800 mb-4">What happens when we connect the whole system?
+                        </p>
+                        <ul class="text-left space-y-3 text-lg text-gray-700">
+                            <li class="flex items-center"><span
+                                    class="bg-indigo-100 text-indigo-700 font-bold px-3 py-1 rounded-full mr-3">1</span>
+                                We turn &nbsp;<strong> Gear X </strong>&nbsp; exactly 1 time.</li>
+                            <li class="flex items-center"><span
+                                    class="bg-blue-100 text-blue-700 font-bold px-3 py-1 rounded-full mr-3">2</span>
+                                This multiplier forces &nbsp;<strong> Gear Q </strong>&nbsp; to turn 3 times.</li>
+                            <li class="flex items-center"><span
+                                    class="bg-green-100 text-green-700 font-bold px-3 py-1 rounded-full mr-3">3</span>
+                                Gear Q's 3 turns push &nbsp;<strong> Gear F </strong>&nbsp; to turn exactly 3 times.</li>
+                        </ul>
+                    </div>
+
+                    <!-- The Connected Gear Train -->
+                    <div
+                        class="flex items-center justify-center space-x-6 bg-slate-50 p-8 rounded-3xl border-2 border-slate-200 w-full max-w-3xl shadow-inner relative">
+                        <!-- Gear X -->
+                        <div class="text-center flex flex-col items-center z-10">
+                            <svg class="w-20 h-20 gear-normal text-indigo-500" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                    d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z">
+                                </path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            </svg>
+                            <p class="font-bold text-lg mt-2 text-indigo-700">Gear X</p>
+                            <p
+                                class="text-sm font-bold text-gray-700 bg-white border border-gray-200 px-4 py-1.5 rounded-full mt-2 shadow-sm">
+                                1 Turn</p>
+                        </div>
+
+                        <!-- Arrow -->
+                        <div class="flex flex-col items-center justify-center text-gray-400">
+                            <span class="text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">x 3 Ratio</span>
+                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3"
+                                    d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+                            </svg>
+                        </div>
+
+                        <!-- Gear Q -->
+                        <div class="text-center flex flex-col items-center z-10">
+                            <svg class="w-24 h-24 gear-fast-rev text-blue-500" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                    d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z">
+                                </path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            </svg>
+                            <p class="font-bold text-lg mt-2 text-blue-700">Gear Q</p>
+                            <p
+                                class="text-sm font-bold text-gray-700 bg-white border border-gray-200 px-4 py-1.5 rounded-full mt-2 shadow-sm">
+                                3 Turns</p>
+                        </div>
+
+                        <!-- Arrow -->
+                        <div class="flex flex-col items-center justify-center text-gray-400">
+                            <span class="text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">x 1 Ratio</span>
+                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3"
+                                    d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+                            </svg>
+                        </div>
+
+                        <!-- Gear F -->
+                        <div class="text-center flex flex-col items-center z-10">
+                            <svg class="w-24 h-24 gear-fast-fwd text-green-500" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                    d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z">
+                                </path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            </svg>
+                            <p class="font-bold text-lg mt-2 text-green-700">Gear F</p>
+                            <p
+                                class="text-sm font-bold text-gray-700 bg-white border border-gray-200 px-4 py-1.5 rounded-full mt-2 shadow-sm">
+                                3 Turns</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 4: Step 4 (Chain Rule) -->
+            <div class="slide flex-col h-full" id="slide-4">
+                <div class="flex justify-between items-end mb-4">
+                    <h2 class="text-3xl font-bold text-gray-900">Step 4: The Math Equation</h2>
+                    <div class="text-2xl font-bold text-rose-600 bg-rose-100 px-4 py-2 rounded-lg">$\frac{\partial
+                        f}{\partial x} = 3$</div>
+                </div>
+
+                <div class="flex-1 flex flex-col items-center justify-center space-y-8">
+                    <div class="text-center w-full max-w-2xl bg-white p-8 rounded-2xl shadow-md border border-gray-100">
+                        <p class="text-xl font-medium text-gray-700 mb-6">Autograd connects the gears mathematically by
+                            <strong>multiplying</strong> the steps. This is the exact definition of the Chain Rule:</p>
+
+                        <div
+                            class="text-3xl bg-gray-50 p-6 rounded-xl inline-block border border-gray-200 shadow-inner w-full mb-6 text-center">
+                            $$\frac{\partial f}{\partial x} = \frac{\partial f}{\partial q} \cdot \frac{\partial
+                            q}{\partial x}$$
+                        </div>
+
+                        <div class="flex items-center justify-center space-x-6">
+                            <div class="flex flex-col items-center">
+                                <span class="text-gray-500 mb-2 font-medium">Step 1 (Gear Q to F)</span>
+                                <span class="text-3xl font-bold text-blue-600">1</span>
+                            </div>
+                            <span class="text-3xl font-bold text-gray-400">$\times$</span>
+                            <div class="flex flex-col items-center">
+                                <span class="text-gray-500 mb-2 font-medium">Step 2 (Gear X to Q)</span>
+                                <span class="text-3xl font-bold text-indigo-600">3</span>
+                            </div>
+                            <span class="text-3xl font-bold text-gray-400">$=$</span>
+                            <div class="flex flex-col items-center">
+                                <span class="text-gray-500 mb-2 font-medium">Total (Gear X to F)</span>
+                                <span class="text-4xl font-bold text-rose-600">3</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SLIDE 5: Conclusion -->
+            <div class="slide flex-col h-full" id="slide-5">
+                <div class="flex justify-between items-end mb-4">
+                    <h2 class="text-3xl font-bold text-gray-900">Step 5: Autograd's Final Notes</h2>
+                    <div class="text-2xl font-bold text-emerald-600 bg-emerald-100 px-4 py-2 rounded-lg">Gradient Found!
+                    </div>
+                </div>
+
+                <div class="flex-1 flex flex-col items-center justify-center space-y-8">
+                    <div
+                        class="w-full max-w-2xl bg-white p-8 rounded-2xl shadow-lg border-2 border-emerald-100 relative overflow-hidden">
+
+                        <div
+                            class="absolute top-0 right-0 bg-emerald-500 text-white px-4 py-1 rounded-bl-xl font-bold text-sm tracking-wide">
+                            SAVED TO MEMORY
+                        </div>
+
+                        <h3 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-4">What does "3" actually mean?
+                        </h3>
+
+                        <p class="text-lg text-gray-700 leading-relaxed mb-6">
+                            Autograd now tells the AI's Optimizer: <strong>"The gradient for x is 3."</strong>
+                        </p>
+
+                        <div class="bg-gray-50 p-6 rounded-xl border border-gray-200">
+                            <p class="text-gray-800 font-medium italic text-lg text-center">
+                                "Hey Optimizer! If we want to fix our mistake and make the final answer ($f$) go up,
+                                pushing on $x$ is <strong>3 times more powerful</strong> than pushing on other parts of
+                                the graph."
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Footer / Controls -->
+        <div class="bg-gray-50 p-6 border-t border-gray-200 flex justify-between items-center">
+            <button id="btn-back"
+                class="px-6 py-2.5 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm">
+                &larr; Back
+            </button>
+
+            <!-- Progress Indicators -->
+            <div class="flex space-x-3">
+                <div class="indicator w-3 h-3 rounded-full bg-blue-600 transition-colors"></div>
+                <div class="indicator w-3 h-3 rounded-full bg-gray-300 transition-colors"></div>
+                <div class="indicator w-3 h-3 rounded-full bg-gray-300 transition-colors"></div>
+                <div class="indicator w-3 h-3 rounded-full bg-gray-300 transition-colors"></div>
+                <div class="indicator w-3 h-3 rounded-full bg-gray-300 transition-colors"></div>
+                <div class="indicator w-3 h-3 rounded-full bg-gray-300 transition-colors"></div>
+            </div>
+
+            <button id="btn-next"
+                class="px-6 py-2.5 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors shadow-md">
+                Next Step &rarr;
+            </button>
+        </div>
+    </div>
+
+    <script src="../js/chain_rule_visualization.js"></script>
+</body>
+
+</html>

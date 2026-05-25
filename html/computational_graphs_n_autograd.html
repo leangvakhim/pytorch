@@ -39,14 +39,13 @@
         }
     </style>
 </head>
-<!-- Changed items-center to items-start and added py-10 for vertical scrolling -->
 
 <body class="bg-gray-50 min-h-screen font-sans flex items-start justify-center py-10 px-4">
 
     <div class="max-w-4xl w-full bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
 
         <!-- Header -->
-        <div class="bg-blue-600 p-6 text-white text-center">
+        <div class="bg-blue-600 p-6 text-white text-center relative">
             <h1 class="text-3xl font-bold mb-2">Computational Graphs & Autograd</h1>
             <p class="text-blue-100">Understanding how PyTorch calculates gradients step-by-step</p>
         </div>
@@ -72,49 +71,38 @@
 
                     <!-- Forward Pass Edges (Blue) -->
                     <g id="forward-edges" class="svg-element hidden-node">
-                        <!-- x to q -->
                         <line x1="130" y1="100" x2="270" y2="150" stroke="#3B82F6" stroke-width="3"
                             marker-end="url(#arrow-blue)" />
-                        <!-- y to q -->
                         <line x1="130" y1="200" x2="270" y2="150" stroke="#3B82F6" stroke-width="3"
                             marker-end="url(#arrow-blue)" />
-                        <!-- z to f -->
                         <line x1="130" y1="300" x2="470" y2="225" stroke="#3B82F6" stroke-width="3"
                             marker-end="url(#arrow-blue)" />
-                        <!-- q to f -->
                         <line x1="330" y1="150" x2="470" y2="225" stroke="#3B82F6" stroke-width="3"
                             marker-end="url(#arrow-blue)" />
                     </g>
 
                     <!-- Backward Pass Edges (Red Dashed) -->
                     <g id="backward-edges-1" class="svg-element hidden-node">
-                        <!-- f to q (gradient flow) -->
                         <path d="M 470 205 Q 400 120 330 130" fill="none" stroke="#EF4444" stroke-width="3"
                             class="dash-anim" marker-end="url(#arrow-red)" />
-                        <!-- f to z (gradient flow) -->
                         <path d="M 470 245 Q 400 320 130 320" fill="none" stroke="#EF4444" stroke-width="3"
                             class="dash-anim" marker-end="url(#arrow-red)" />
                     </g>
                     <g id="backward-edges-2" class="svg-element hidden-node">
-                        <!-- q to x (gradient flow) -->
                         <path d="M 270 130 Q 200 80 130 80" fill="none" stroke="#EF4444" stroke-width="3"
                             class="dash-anim" marker-end="url(#arrow-red)" />
-                        <!-- q to y (gradient flow) -->
                         <path d="M 270 170 Q 200 220 130 220" fill="none" stroke="#EF4444" stroke-width="3"
                             class="dash-anim" marker-end="url(#arrow-red)" />
                     </g>
 
                     <!-- Nodes: Inputs (x, y, z) -->
                     <g id="node-inputs" class="svg-element hidden-node">
-                        <!-- x -->
                         <circle cx="100" cy="100" r="30" fill="white" stroke="#1F2937" stroke-width="3" />
                         <text x="100" y="105" text-anchor="middle" font-size="18" font-weight="bold"
                             fill="#1F2937">x=2</text>
-                        <!-- y -->
                         <circle cx="100" cy="200" r="30" fill="white" stroke="#1F2937" stroke-width="3" />
                         <text x="100" y="205" text-anchor="middle" font-size="18" font-weight="bold"
                             fill="#1F2937">y=3</text>
-                        <!-- z -->
                         <circle cx="100" cy="300" r="30" fill="white" stroke="#1F2937" stroke-width="3" />
                         <text x="100" y="305" text-anchor="middle" font-size="18" font-weight="bold"
                             fill="#1F2937">z=4</text>
@@ -137,28 +125,23 @@
                     </g>
 
                     <!-- Gradients (Backward Pass Values) -->
-                    <!-- Output Gradient -->
                     <g id="grad-f" class="svg-element hidden-node">
                         <rect x="470" y="150" width="60" height="25" rx="4" fill="#FEE2E2" stroke="#EF4444" />
                         <text x="500" y="167" text-anchor="middle" font-size="14" font-weight="bold" fill="#EF4444">∇f =
                             1</text>
                     </g>
-                    <!-- Intermediate Gradients -->
                     <g id="grad-q-z" class="svg-element hidden-node">
                         <rect x="270" y="75" width="60" height="25" rx="4" fill="#FEE2E2" stroke="#EF4444" />
                         <text x="300" y="92" text-anchor="middle" font-size="14" font-weight="bold" fill="#EF4444">∇q =
                             1</text>
-
                         <rect x="70" y="345" width="60" height="25" rx="4" fill="#FEE2E2" stroke="#EF4444" />
                         <text x="100" y="362" text-anchor="middle" font-size="14" font-weight="bold" fill="#EF4444">∇z =
                             1</text>
                     </g>
-                    <!-- Input Gradients -->
                     <g id="grad-x-y" class="svg-element hidden-node">
                         <rect x="70" y="35" width="60" height="25" rx="4" fill="#FEE2E2" stroke="#EF4444" />
                         <text x="100" y="52" text-anchor="middle" font-size="14" font-weight="bold" fill="#EF4444">∇x =
                             3</text>
-
                         <rect x="70" y="245" width="60" height="25" rx="4" fill="#FEE2E2" stroke="#EF4444" />
                         <text x="100" y="262" text-anchor="middle" font-size="14" font-weight="bold" fill="#EF4444">∇y =
                             2</text>
@@ -167,7 +150,6 @@
             </div>
 
             <!-- Right Side: Explanations & Math -->
-            <!-- Changed from strict h-[450px] to min-h-[450px] to prevent content cutting off and allow stretching -->
             <div class="p-8 flex flex-col justify-between min-h-[450px]">
                 <div>
                     <div class="flex items-center space-x-2 mb-4">
@@ -185,24 +167,152 @@
                         class="bg-gray-50 rounded-lg p-4 border border-gray-200 min-h-[100px] flex flex-col justify-center overflow-x-auto">
                         <div id="math-container" class="text-center text-lg"></div>
                     </div>
+
+                    <!-- Conditional Chain Rule Button (Shown only on Step 4) -->
+                    <div id="chain-rule-btn-container" class="hidden mt-4">
+                        <a href="./chain_rule_visualization.html" target="_blank"
+                            class="w-full block text-center px-5 py-3 bg-emerald-600 border-2 border-emerald-600 text-white font-semibold rounded-lg hover:bg-emerald-700 transition shadow-md">
+                            Chain Rule visualization &rarr;
+                        </a>
+                    </div>
                 </div>
 
-                <!-- Controls -->
-                <div class="flex justify-between mt-8">
-                    <button id="btn-back" onclick="changeStep(-1)"
-                        class="px-5 py-2.5 bg-white border-2 border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 hover:border-gray-400 transition disabled:opacity-50 disabled:cursor-not-allowed">
-                        &larr; Back
-                    </button>
-                    <button id="btn-next" onclick="changeStep(1)"
-                        class="px-5 py-2.5 bg-blue-600 border-2 border-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed shadow-md">
-                        Next Step &rarr;
-                    </button>
+                <!-- Controls and External Link Section -->
+                <div class="mt-8 flex flex-col gap-4">
+                    <!-- Standard Back / Next Step Controls -->
+                    <div class="flex justify-between">
+                        <button id="btn-back" onclick="changeStep(-1)"
+                            class="px-5 py-2.5 bg-white border-2 border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 hover:border-gray-400 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                            &larr; Back
+                        </button>
+                        <button id="btn-next" onclick="changeStep(1)"
+                            class="px-5 py-2.5 bg-blue-600 border-2 border-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed shadow-md">
+                            Next Step &rarr;
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <script src="../js/computational_graphs_n_autograd.js"></script>
+    <script>
+        // Store our steps data
+        const steps = [
+            {
+                title: "The Objective",
+                desc: "We have a simple mathematical function with three inputs (x, y, z). Our goal is to calculate the final output (Forward Pass) and then figure out how much each input contributed to the output (Backward Pass / Gradients).",
+                math: "f(x,y,z) = (x \\times y) + z",
+                svgState: [] // which SVG elements to show
+            },
+            {
+                title: "Step 1: Input Tensors",
+                desc: "In PyTorch, we define our variables as Tensors with <code>requires_grad=True</code>. These form the starting nodes (leaves) of our computational graph.",
+                math: "\\text{Let } x=2, \\; y=3, \\; z=4",
+                svgState: ['node-inputs']
+            },
+            {
+                title: "Step 2: Forward Pass (Multiplication)",
+                desc: "PyTorch evaluates operations step-by-step. First, it creates an intermediate node <b>q</b> for the multiplication. It saves this graph in memory for later.",
+                math: "q = x \\times y = 2 \\times 3 = 6",
+                svgState: ['node-inputs', 'forward-edges', 'node-q']
+            },
+            {
+                title: "Step 3: Forward Pass (Addition)",
+                desc: "Next, it adds <b>z</b> to <b>q</b> to get our final output <b>f</b>. The Forward Pass is now complete! The blue graph represents PyTorch's memory of the operations.",
+                math: "f = q + z = 6 + 4 = 10",
+                svgState: ['node-inputs', 'forward-edges', 'node-q', 'node-f']
+            },
+            {
+                title: "The Math: Chain Rule Equations",
+                desc: "Before we go backwards, let's look at the Calculus. Autograd uses the <b>Chain Rule</b>. To find how <b>x</b> affects <b>f</b> ($\\frac{\\partial f}{\\partial x}$), we multiply the local gradients along the path.",
+                math: "\\begin{aligned} &\\frac{\\partial f}{\\partial q} = 1, \\quad \\frac{\\partial f}{\\partial z} = 1 \\\\[6pt] &\\frac{\\partial q}{\\partial x} = y, \\quad \\frac{\\partial q}{\\partial y} = x \\\\[6pt] &\\frac{\\partial f}{\\partial x} = \\frac{\\partial f}{\\partial q} \\times \\frac{\\partial q}{\\partial x} = 1 \\times 3 = 3 \\end{aligned}",
+                svgState: ['node-inputs', 'forward-edges', 'node-q', 'node-f']
+            },
+            {
+                title: "Step 4: Backward Pass (Output & Addition)",
+                desc: "When we call <code>f.backward()</code>, PyTorch pushes a gradient of 1 starting from <b>f</b>. Because addition just passes gradients equally, <b>q</b> and <b>z</b> receive a gradient of 1.",
+                math: "\\nabla f = 1 \\\\ \\nabla q = 1, \\quad \\nabla z = 1",
+                svgState: ['node-inputs', 'forward-edges', 'node-q', 'node-f', 'grad-f', 'backward-edges-1', 'grad-q-z']
+            },
+            {
+                title: "Step 5: Backward Pass (Multiplication)",
+                desc: "The gradient continues to flow back to <b>x</b> and <b>y</b>. For multiplication, the local gradient is the <i>other</i> multiplier. PyTorch multiplies the incoming gradient (1) by the local gradients (y and x).",
+                math: "\\nabla x = \\nabla q \\times y = 1 \\times 3 = 3 \\\\ \\nabla y = \\nabla q \\times x = 1 \\times 2 = 2",
+                svgState: ['node-inputs', 'forward-edges', 'node-q', 'node-f', 'grad-f', 'backward-edges-1', 'grad-q-z', 'backward-edges-2', 'grad-x-y']
+            }
+        ];
+
+        let currentStep = 0;
+
+        function updateUI() {
+            const stepData = steps[currentStep];
+
+            // Update Text
+            document.getElementById('step-badge').innerText = `Step ${currentStep} / ${steps.length - 1}`;
+            document.getElementById('step-title').innerText = stepData.title;
+
+            // Parse inline math ($...$) in the description using KaTeX
+            const formattedDesc = stepData.desc.replace(/\$(.*?)\$/g, (match, mathContent) => {
+                return katex.renderToString(mathContent, { throwOnError: false, displayMode: false });
+            });
+            document.getElementById('step-desc').innerHTML = formattedDesc;
+
+            // Render Math using KaTeX
+            const mathContainer = document.getElementById('math-container');
+            if (stepData.math) {
+                katex.render(stepData.math, mathContainer, {
+                    throwOnError: false,
+                    displayMode: true
+                });
+            } else {
+                mathContainer.innerHTML = "";
+            }
+
+            // Update Buttons
+            document.getElementById('btn-back').disabled = currentStep === 0;
+            document.getElementById('btn-next').disabled = currentStep === steps.length - 1;
+
+            // Toggle Chain Rule Button visibility (Only in Step 4)
+            const chainRuleBtn = document.getElementById('chain-rule-btn-container');
+            if (currentStep === 4) {
+                chainRuleBtn.classList.remove('hidden');
+            } else {
+                chainRuleBtn.classList.add('hidden');
+            }
+
+            // Update SVG States
+            // First, hide everything
+            const allElements = ['node-inputs', 'forward-edges', 'node-q', 'node-f', 'grad-f', 'backward-edges-1', 'grad-q-z', 'backward-edges-2', 'grad-x-y'];
+            allElements.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.classList.remove('visible-node');
+                    el.classList.add('hidden-node');
+                }
+            });
+
+            // Then, show elements for the current step
+            stepData.svgState.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.classList.remove('hidden-node');
+                    el.classList.add('visible-node');
+                }
+            });
+        }
+
+        function changeStep(direction) {
+            currentStep += direction;
+            if (currentStep < 0) currentStep = 0;
+            if (currentStep >= steps.length) currentStep = steps.length - 1;
+            updateUI();
+        }
+
+        // Initialize first step after page loads to ensure KaTeX is ready
+        window.onload = () => {
+            updateUI();
+        };
+    </script>
 </body>
 
 </html>
