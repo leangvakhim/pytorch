@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Computational Graph & Autograd Step-by-Step</title>
+    <!-- Import Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Import KaTeX for LaTeX Math Rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"
+        xintegrity="sha384-n8MVd4RsNIU0tAv4ct0nTaAbDJwPJzDEaqSD1odI+WdtXRGWt2kTvGFasHpSy3SV" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"
+        xintegrity="sha384-XjKyOOlGwcjNTAIQHIpgOno0Hl1YQqzUOEleOLALmuqehneUG+vnGctmUb0ZY0l8"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+        xintegrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbOxyj0OvEXVuzSNIGZ/QhGdTj"
+        crossorigin="anonymous"></script>
+
+    <style>
+        /* Add smooth transitions for SVG opacity changes */
+        svg g {
+            transition: opacity 0.5s ease-in-out;
+        }
+
+        .math-var {
+            font-family: serif;
+            font-style: italic;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4 font-sans text-gray-800">
+
+    <div
+        class="max-w-5xl w-full bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col md:flex-row border border-gray-200">
+
+        <!-- Left Side: Graph Visualization -->
+        <div
+            class="w-full md:w-3/5 bg-gray-50 p-6 flex items-center justify-center relative border-b md:border-b-0 md:border-r border-gray-200">
+            <!-- SVG ViewBox handles responsiveness automatically -->
+            <svg viewBox="0 0 600 400" class="w-full h-auto max-w-full drop-shadow-sm">
+                <defs>
+                    <!-- Forward Arrowhead (Blue) -->
+                    <marker id="arrowFwd" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+                        <path d="M 0 0 L 8 4 L 0 8 z" fill="#3b82f6" />
+                    </marker>
+                    <!-- Backward Arrowhead (Red) -->
+                    <marker id="arrowBwd" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+                        <path d="M 0 0 L 8 4 L 0 8 z" fill="#ef4444" />
+                    </marker>
+                </defs>
+
+                <!-- INITIAL NODES (Always visible) -->
+                <!-- x node -->
+                <circle cx="100" cy="100" r="28" fill="white" stroke="#475569" stroke-width="2" />
+                <text x="100" cy="105" text-anchor="middle" font-weight="bold" fill="#1e293b">x=2</text>
+
+                <!-- y node -->
+                <circle cx="100" cy="200" r="28" fill="white" stroke="#475569" stroke-width="2" />
+                <text x="100" cy="205" text-anchor="middle" font-weight="bold" fill="#1e293b">y=3</text>
+
+                <!-- z node -->
+                <circle cx="100" cy="300" r="28" fill="white" stroke="#475569" stroke-width="2" />
+                <text x="100" cy="305" text-anchor="middle" font-weight="bold" fill="#1e293b">z=4</text>
+
+                <!-- q node (Intermediate) -->
+                <circle cx="300" cy="150" r="32" fill="#eff6ff" stroke="#3b82f6" stroke-width="2" />
+                <text x="300" cy="148" text-anchor="middle" font-weight="bold" fill="#1d4ed8">q=<tspan id="q-val">
+                    </tspan></text>
+                <text x="300" cy="165" text-anchor="middle" font-size="11" fill="#64748b">(x * y)</text>
+
+                <!-- f node (Final Output) -->
+                <circle cx="500" cy="225" r="32" fill="#eff6ff" stroke="#3b82f6" stroke-width="2" />
+                <text x="500" cy="223" text-anchor="middle" font-weight="bold" fill="#1d4ed8">f=<tspan id="f-val">
+                    </tspan></text>
+                <text x="500" cy="240" text-anchor="middle" font-size="11" fill="#64748b">(q + z)</text>
+
+                <!-- ========================================== -->
+                <!-- DYNAMIC GROUPS (Toggled by JavaScript) -->
+                <!-- ========================================== -->
+
+                <!-- Forward Edges: Multiplication (x->q, y->q) -->
+                <g id="fwd-m" opacity="0" stroke="#3b82f6" stroke-width="2" fill="none" marker-end="url(#arrowFwd)">
+                    <path d="M 128 106 L 265 140" />
+                    <path d="M 128 194 L 265 160" />
+                </g>
+
+                <!-- Forward Edges: Addition (q->f, z->f) -->
+                <g id="fwd-a" opacity="0" stroke="#3b82f6" stroke-width="2" fill="none" marker-end="url(#arrowFwd)">
+                    <path d="M 330 160 L 468 212" />
+                    <path d="M 128 290 L 468 238" />
+                </g>
+
+                <!-- Gradient Start: ∇f -->
+                <g id="grad-f" opacity="0">
+                    <rect x="510" y="145" width="50" height="24" rx="4" fill="#fee2e2" stroke="#ef4444"
+                        stroke-width="1" />
+                    <text x="535" y="162" text-anchor="middle" font-size="12" font-weight="bold"
+                        fill="#b91c1c">∇f=1</text>
+                </g>
+
+                <!-- Backward Edges: Addition (f->q, f->z) -->
+                <g id="bwd-a" opacity="0">
+                    <path d="M 470 200 Q 400 110 335 130" stroke="#ef4444" stroke-width="2" stroke-dasharray="5,5"
+                        fill="none" marker-end="url(#arrowBwd)" />
+                    <path d="M 475 250 Q 350 340 135 305" stroke="#ef4444" stroke-width="2" stroke-dasharray="5,5"
+                        fill="none" marker-end="url(#arrowBwd)" />
+
+                    <!-- Gradient Labels for Addition -->
+                    <rect x="295" y="70" width="50" height="24" rx="4" fill="#fee2e2" stroke="#ef4444"
+                        stroke-width="1" />
+                    <text x="320" y="87" text-anchor="middle" font-size="12" font-weight="bold"
+                        fill="#b91c1c">∇q=1</text>
+
+                    <rect x="150" y="325" width="50" height="24" rx="4" fill="#fee2e2" stroke="#ef4444"
+                        stroke-width="1" />
+                    <text x="175" y="342" text-anchor="middle" font-size="12" font-weight="bold"
+                        fill="#b91c1c">∇z=1</text>
+                </g>
+
+                <!-- Backward Edges: Multiplication (q->x, q->y) -->
+                <g id="bwd-m" opacity="0">
+                    <path d="M 280 125 Q 190 60 120 85" stroke="#ef4444" stroke-width="2" stroke-dasharray="5,5"
+                        fill="none" marker-end="url(#arrowBwd)" />
+                    <path d="M 275 170 Q 200 240 125 215" stroke="#ef4444" stroke-width="2" stroke-dasharray="5,5"
+                        fill="none" marker-end="url(#arrowBwd)" />
+
+                    <!-- Gradient Labels for Multiplication -->
+                    <rect x="100" y="30" width="55" height="24" rx="4" fill="#fee2e2" stroke="#ef4444"
+                        stroke-width="1" />
+                    <text x="127.5" y="47" text-anchor="middle" font-size="12" font-weight="bold"
+                        fill="#b91c1c">∇x=3</text>
+
+                    <rect x="130" y="240" width="55" height="24" rx="4" fill="#fee2e2" stroke="#ef4444"
+                        stroke-width="1" />
+                    <text x="157.5" y="257" text-anchor="middle" font-size="12" font-weight="bold"
+                        fill="#b91c1c">∇y=2</text>
+                </g>
+            </svg>
+        </div>
+
+        <!-- Right Side: Text & Controls -->
+        <div class="w-full md:w-2/5 p-8 flex flex-col justify-between bg-white">
+
+            <div>
+                <div class="inline-block px-3 py-1 bg-blue-100 text-blue-700 font-semibold text-xs rounded-full tracking-wide uppercase mb-4"
+                    id="step-progress">
+                    Step 1 / 7
+                </div>
+
+                <h2 class="text-2xl font-bold text-gray-900 mb-4" id="step-title">
+                    Step 1: The Setup
+                </h2>
+
+                <!-- Dynamic text content injected here -->
+                <div class="text-gray-600 space-y-4 leading-relaxed" id="step-desc">
+                    <!-- Default content -->
+                </div>
+            </div>
+
+            <!-- Navigation Buttons -->
+            <div class="mt-8 flex justify-between items-center pt-6 border-t border-gray-100">
+                <button id="btn-prev"
+                    class="px-5 py-2.5 rounded-lg font-medium transition-colors bg-gray-100 text-gray-600 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300">
+                    &larr; Back
+                </button>
+                <button id="btn-next"
+                    class="px-5 py-2.5 rounded-lg font-medium transition-colors bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-md">
+                    Next Step &rarr;
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/backward_pass_multiplication.js"></script>
+</body>
+
+</html>

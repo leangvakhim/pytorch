@@ -52,7 +52,12 @@ function updateUI() {
     // Update Text
     document.getElementById('step-badge').innerText = `Step ${currentStep} / ${steps.length - 1}`;
     document.getElementById('step-title').innerText = stepData.title;
-    document.getElementById('step-desc').innerHTML = stepData.desc;
+
+    // Parse inline math ($...$) in the description using KaTeX
+    const formattedDesc = stepData.desc.replace(/\$(.*?)\$/g, (match, mathContent) => {
+        return katex.renderToString(mathContent, { throwOnError: false, displayMode: false });
+    });
+    document.getElementById('step-desc').innerHTML = formattedDesc;
 
     // Render Math using KaTeX
     const mathContainer = document.getElementById('math-container');
@@ -68,6 +73,30 @@ function updateUI() {
     // Update Buttons
     document.getElementById('btn-back').disabled = currentStep === 0;
     document.getElementById('btn-next').disabled = currentStep === steps.length - 1;
+
+    // Toggle Chain Rule Button visibility (Only in Step 4)
+    const chainRuleBtn = document.getElementById('chain-rule-btn-container');
+    if (currentStep === 4) {
+        chainRuleBtn.classList.remove('hidden');
+    } else {
+        chainRuleBtn.classList.add('hidden');
+    }
+
+    // Toggle Backward Pass 1 Button visibility (Only in Step 5)
+    const backwardPass1Btn = document.getElementById('backward-pass-1-btn-container');
+    if (currentStep === 5) {
+        backwardPass1Btn.classList.remove('hidden');
+    } else {
+        backwardPass1Btn.classList.add('hidden');
+    }
+
+    // Toggle Backward Pass 1 Button visibility (Only in Step 6)
+    const backwardPass1BtnMultiplication = document.getElementById('backward-pass-1-btn-multiplication');
+    if (currentStep === 6) {
+        backwardPass1BtnMultiplication.classList.remove('hidden');
+    } else {
+        backwardPass1BtnMultiplication.classList.add('hidden');
+    }
 
     // Update SVG States
     // First, hide everything

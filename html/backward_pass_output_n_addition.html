@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gradients & Autograd Explained</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- KaTeX CSS and JS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+
+        /* Smooth SVG Transitions */
+        .svg-el {
+            transition: all 0.5s ease-in-out;
+        }
+
+        .hidden-el {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .visible-el {
+            opacity: 1;
+        }
+
+        /* Dash animation for backward pass */
+        .dash-anim {
+            stroke-dasharray: 10;
+            animation: dashFlow 1s linear infinite reverse;
+        }
+
+        @keyframes dashFlow {
+            to {
+                stroke-dashoffset: 20;
+            }
+        }
+
+        .highlight-pulse {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                filter: drop-shadow(0 0 0px rgba(59, 130, 246, 0.7));
+            }
+
+            50% {
+                filter: drop-shadow(0 0 15px rgba(59, 130, 246, 0.9));
+            }
+
+            100% {
+                filter: drop-shadow(0 0 0px rgba(59, 130, 246, 0.7));
+            }
+        }
+
+        .equation-box {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.5rem;
+            padding: 0.5rem 0.75rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            color: #1e293b;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+    </style>
+</head>
+
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <div class="max-w-4xl w-full bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-200">
+
+        <!-- Header -->
+        <div class="bg-blue-600 text-white p-6 text-center">
+            <h1 class="text-2xl font-bold">Computational Graphs & Gradients</h1>
+            <p class="text-blue-100 mt-1" id="header-subtitle">Understanding Nabla ($\nabla$), Del ($\partial$), and the
+                Chain Rule</p>
+        </div>
+
+        <!-- Interactive Visualization Area -->
+        <div class="relative w-full h-[400px] bg-slate-50 border-b border-slate-200 overflow-hidden">
+            <svg viewBox="0 0 800 400" class="w-full h-full absolute inset-0">
+                <defs>
+                    <!-- Forward Arrowhead -->
+                    <marker id="arrow-forward" viewBox="0 0 10 10" refX="25" refY="5" markerWidth="6" markerHeight="6"
+                        orient="auto-start-reverse">
+                        <path d="M 0 0 L 10 5 L 0 10 z" fill="#64748b" />
+                    </marker>
+                    <!-- Backward Arrowhead -->
+                    <marker id="arrow-backward" viewBox="0 0 10 10" refX="25" refY="5" markerWidth="6" markerHeight="6"
+                        orient="auto-start-reverse">
+                        <path d="M 10 0 L 0 5 L 10 10 z" fill="#ef4444" />
+                    </marker>
+                </defs>
+
+                <!-- FORWARD EDGES (Solid Gray) -->
+                <!-- x to q -->
+                <path id="edge-x-q" class="svg-el hidden-el stroke-slate-400 stroke-2" fill="none"
+                    d="M 150 200 L 350 120" marker-end="url(#arrow-forward)" />
+                <!-- q to f -->
+                <path id="edge-q-f" class="svg-el visible-el stroke-slate-400 stroke-[3px]" fill="none"
+                    d="M 350 120 L 650 200" marker-end="url(#arrow-forward)" />
+                <!-- z to f -->
+                <path id="edge-z-f" class="svg-el visible-el stroke-slate-400 stroke-[3px]" fill="none"
+                    d="M 350 280 L 650 200" marker-end="url(#arrow-forward)" />
+
+                <!-- BACKWARD EDGES (Dashed Red - Gradients) -->
+                <!-- f to q -->
+                <path id="edge-f-q" class="svg-el hidden-el stroke-red-500 stroke-2 dash-anim" fill="none"
+                    d="M 650 185 Q 500 80 350 105" marker-end="url(#arrow-backward)" />
+                <!-- f to z -->
+                <path id="edge-f-z" class="svg-el hidden-el stroke-red-500 stroke-2 dash-anim" fill="none"
+                    d="M 650 215 Q 500 320 350 295" marker-end="url(#arrow-backward)" />
+                <!-- q to x -->
+                <path id="edge-q-x" class="svg-el hidden-el stroke-red-500 stroke-2 dash-anim" fill="none"
+                    d="M 350 135 Q 250 180 150 215" marker-end="url(#arrow-backward)" />
+
+                <!-- NODES -->
+                <!-- Worker x -->
+                <g id="node-x" class="svg-el hidden-el">
+                    <circle cx="150" cy="200" r="35" fill="white" stroke="#3b82f6" stroke-width="3" />
+                    <text x="150" y="195" text-anchor="middle" font-weight="bold" fill="#1e293b">Worker x</text>
+                    <text x="150" y="215" text-anchor="middle" font-size="12" fill="#64748b">(Tickets)</text>
+                </g>
+
+                <!-- Manager q -->
+                <g id="node-q" class="svg-el visible-el">
+                    <circle cx="350" cy="120" r="45" fill="white" stroke="#3b82f6" stroke-width="4" />
+                    <text x="350" y="115" text-anchor="middle" font-weight="bold" fill="#1e293b" font-size="14">Manager
+                        q</text>
+                    <text x="350" y="135" text-anchor="middle" font-size="12" fill="#64748b">(Team KPI)</text>
+                </g>
+
+                <!-- Manager z -->
+                <g id="node-z" class="svg-el visible-el">
+                    <circle cx="350" cy="280" r="45" fill="white" stroke="#3b82f6" stroke-width="4" />
+                    <text x="350" y="275" text-anchor="middle" font-weight="bold" fill="#1e293b" font-size="14">Manager
+                        z</text>
+                    <text x="350" y="295" text-anchor="middle" font-size="12" fill="#64748b">(Sales KPI)</text>
+                </g>
+
+                <!-- Boss f -->
+                <g id="node-f" class="svg-el visible-el">
+                    <circle cx="650" cy="200" r="55" fill="#eff6ff" stroke="#2563eb" stroke-width="5" />
+                    <text x="650" y="195" text-anchor="middle" font-weight="bold" fill="#1e293b" font-size="20">Boss
+                        f</text>
+                    <text x="650" y="215" text-anchor="middle" font-size="14" fill="#2563eb">(Total Profit)</text>
+                </g>
+
+                <!-- MATH LABELS (HTML embedded in SVG for styling and KaTeX) -->
+
+                <foreignObject id="eq-f" x="590" y="260" width="120" height="40" class="svg-el visible-el">
+                    <div class="text-center text-slate-500 font-bold">
+                        $f = q + z$
+                    </div>
+                </foreignObject>
+
+                <!-- target/knob icons for step 2 -->
+                <foreignObject id="icon-knob" x="250" y="40" width="80" height="40" class="svg-el hidden-el">
+                    <div
+                        class="bg-slate-800 text-white text-xs font-bold py-1 px-2 rounded flex items-center justify-center">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4">
+                            </path>
+                        </svg>
+                        Knob
+                    </div>
+                </foreignObject>
+                <foreignObject id="icon-target" x="680" y="120" width="80" height="40" class="svg-el hidden-el">
+                    <div
+                        class="bg-amber-500 text-white text-xs font-bold py-1 px-2 rounded flex items-center justify-center">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                        Target
+                    </div>
+                </foreignObject>
+
+                <!-- Equation Boxes using KaTeX -->
+                <foreignObject id="label-nabla-f" x="660" y="100" width="120" height="50" class="svg-el hidden-el">
+                    <div class="equation-box text-blue-600 font-semibold">
+                        $\nabla f = 1$
+                    </div>
+                </foreignObject>
+
+                <foreignObject id="label-nabla-f-detail" x="590" y="295" width="120" height="50"
+                    class="svg-el hidden-el">
+                    <div
+                        class="text-sm font-bold text-center text-blue-600 bg-white/80 rounded px-1 flex justify-center py-1">
+                        $\frac{\partial f}{\partial f} = 1$
+                    </div>
+                </foreignObject>
+
+                <foreignObject id="label-del-q" x="440" y="145" width="120" height="60" class="svg-el hidden-el">
+                    <div class="equation-box text-slate-700 bg-white border-slate-300">
+                        $\frac{\partial f}{\partial q} = 1$
+                    </div>
+                </foreignObject>
+
+                <foreignObject id="label-nabla-q" x="380" y="10" width="240" height="90" class="svg-el hidden-el">
+                    <div class="equation-box text-red-600 border-red-200 bg-red-50 text-sm" id="box-nabla-q">
+                        <!-- Content dynamically injected -->
+                    </div>
+                </foreignObject>
+
+                <foreignObject id="label-del-x" x="90" y="240" width="120" height="60" class="svg-el hidden-el">
+                    <div class="equation-box text-slate-700 bg-white text-sm">
+                        $\frac{\partial q}{\partial x} = 5$
+                    </div>
+                </foreignObject>
+
+                <foreignObject id="label-nabla-x" x="20" y="90" width="240" height="90" class="svg-el hidden-el">
+                    <div class="equation-box text-red-600 border-red-200 bg-red-50 text-sm">
+                        <div class="font-bold text-xs mb-1 text-red-800">$\text{Incoming} \times \text{Local}$</div>
+                        <div class="text-lg">$\nabla x = 100 \times 5 = 500$</div>
+                    </div>
+                </foreignObject>
+            </svg>
+        </div>
+
+        <!-- Explanation Content Area -->
+        <div class="p-8">
+            <div
+                class="flex items-center justify-between mb-4 text-sm font-bold text-slate-400 uppercase tracking-wider">
+                <span id="step-counter">Step 1 of 6</span>
+            </div>
+
+            <div id="content-area" class="min-h-[160px]">
+                <!-- Content injected via JS -->
+            </div>
+
+            <!-- Controls -->
+            <div class="flex justify-between mt-8 pt-4 border-t border-slate-100">
+                <button id="btn-prev"
+                    class="px-5 py-2.5 rounded-lg font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                    &larr; Previous
+                </button>
+                <button id="btn-next"
+                    class="px-5 py-2.5 rounded-lg font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed">
+                    Next Step &rarr;
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/backward_pass_output_n_addition.js"></script>
+</body>
+
+</html>
