@@ -1,3 +1,4 @@
+// <!-- Merged JS code block -->
 // Store our steps data
 const steps = [
     {
@@ -41,6 +42,12 @@ const steps = [
         desc: "The gradient continues to flow back to <b>x</b> and <b>y</b>. For multiplication, the local gradient is the <i>other</i> multiplier. PyTorch multiplies the incoming gradient (1) by the local gradients (y and x).",
         math: "\\nabla x = \\nabla q \\times y = 1 \\times 3 = 3 \\\\ \\nabla y = \\nabla q \\times x = 1 \\times 2 = 2",
         svgState: ['node-inputs', 'forward-edges', 'node-q', 'node-f', 'grad-f', 'backward-edges-1', 'grad-q-z', 'backward-edges-2', 'grad-x-y']
+    },
+    {
+        title: "Step 6: PyTorch Code in Action",
+        desc: "Here is how this exact process looks in Python! We define the inputs, do the math, and simply call <code>.backward()</code>. PyTorch uses the graph we just built to do the rest. <br><br> <div class='bg-gray-800 p-4 rounded-lg text-sm text-left font-mono overflow-x-auto shadow-inner border border-gray-700 text-blue-300'> <code> <span class='text-purple-400'>import</span> torch<br><br> <span class='text-gray-400'># 1. Inputs</span><br> x = torch.tensor(<span class='text-orange-300'>2.0</span>, requires_grad=<span class='text-purple-400'>True</span>)<br> y = torch.tensor(<span class='text-orange-300'>3.0</span>, requires_grad=<span class='text-purple-400'>True</span>)<br> z = torch.tensor(<span class='text-orange-300'>4.0</span>, requires_grad=<span class='text-purple-400'>True</span>)<br><br> <span class='text-gray-400'># 2. Forward Pass</span><br> q = x * y<br> f = q + z<br><br> <span class='text-gray-400'># 3. Backward Pass</span><br> f.backward()<br><br> <span class='text-gray-400'># 4. View Gradients</span><br> <span class='text-blue-200'>print</span>(x.grad) <span class='text-gray-400'># tensor(3.)</span><br> <span class='text-blue-200'>print</span>(y.grad) <span class='text-gray-400'># tensor(2.)</span><br> <span class='text-blue-200'>print</span>(z.grad) <span class='text-gray-400'># tensor(1.)</span> </code> </div>",
+        math: "", // Text removed to hide the math section in this step
+        svgState: ['node-inputs', 'forward-edges', 'node-q', 'node-f', 'grad-f', 'backward-edges-1', 'grad-q-z', 'backward-edges-2', 'grad-x-y']
     }
 ];
 
@@ -59,14 +66,18 @@ function updateUI() {
     });
     document.getElementById('step-desc').innerHTML = formattedDesc;
 
-    // Render Math using KaTeX
+    // Render Math using KaTeX and toggle panel visibility
+    const mathPanel = document.getElementById('math-panel');
     const mathContainer = document.getElementById('math-container');
-    if (stepData.math) {
+
+    if (stepData.math && stepData.math.trim() !== "") {
+        mathPanel.classList.remove('hidden');
         katex.render(stepData.math, mathContainer, {
             throwOnError: false,
             displayMode: true
         });
     } else {
+        mathPanel.classList.add('hidden');
         mathContainer.innerHTML = "";
     }
 
